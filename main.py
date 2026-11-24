@@ -16,13 +16,34 @@ ENTRY = (
 )
 
 
+def validate_entry(entry: str) -> bytes:
+    """Validate the competition gate before anything is written.
+
+    Gate: exactly 1 line, exactly 1 sentence, <200 characters (UTF-8).
+    Returns the UTF-8 bytes to write. Raises ValueError with a clear
+    message on any failure so a bad entry can never reach /output.
+    """
+    if not entry.strip():
+        raise ValueError("entry must not be empty")
+    data = entry.encode("utf-8")
+    if len(data) >= 200:
+        raise ValueError(
+            f"entry too long: {len(data)} UTF-8 bytes, must be <200"
+        )
+    if "\n" in entry or "\r" in entry:
+        raise ValueError("entry must be exactly 1 line (no newline characters)")
+    if entry.count(".") != 1 or not entry.rstrip().endswith("."):
+        raise ValueError(
+            "entry must be exactly 1 sentence (a single period at the end)"
+        )
+    return data
+
+
 def main() -> int:
     out_dir = os.environ.get("OUTPUT_DIR", "/output")
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, "entry.txt")
-    data = ENTRY.encode("utf-8")
-    assert 1 <= len(data) <= 200, f"entry length {len(data)} out of range"
-    assert b"\n" not in data, "entry must be a single line"
+    data = validate_entry(ENTRY)
     with open(path, "wb") as f:
         f.write(data)
     print(f"wrote {path} ({len(data)} bytes)")
